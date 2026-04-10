@@ -705,6 +705,97 @@ body {
   pointer-events: none;
 }
 
+/* ===== Secondary Button ===== */
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  border: 1px solid var(--panel-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ===== Quota Error UI ===== */
+.quota-icon {
+  color: #fbbf24;
+  margin-bottom: 0.5rem;
+}
+
+.quota-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 0.4rem;
+}
+
+.quota-desc {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.quota-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 380px;
+  margin-bottom: 1.25rem;
+}
+
+.quota-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-align: left;
+  line-height: 1.5;
+}
+
+.quota-step code {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.quota-step-num {
+  min-width: 20px;
+  height: 20px;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.quota-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 /* ===== Mobile Responsiveness ===== */
 @media (max-width: 640px) {
   .app-title {

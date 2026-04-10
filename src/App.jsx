@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Sparkles, Copy, Check, Trash2, Settings, Fingerprint, RefreshCcw, History, X, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Sparkles, Copy, Check, Trash2, Settings, Fingerprint, RefreshCcw, History, X, AlertTriangle, RotateCcw, Clock, ExternalLink } from 'lucide-react';
 import './index.css';
 
 const MAX_CHARS = 2000;
@@ -16,6 +16,9 @@ function App() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [errorType, setErrorType] = useState(null);
+  const [retryCountdown, setRetryCountdown] = useState(0);
+  const countdownRef = useRef(null);
 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -59,41 +62,77 @@ Rules for the enhanced prompt:
 5. Provide ONLY the final enhanced prompt. Do not add any introductory or concluding text like "Here is your prompt:". Just the raw prompt ready to be copy-pasted.`;
   }, []);
 
+  const startCountdown = (seconds) => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setRetryCountdown(seconds);
+    countdownRef.current = setInterval(() => {
+      setRetryCountdown(prev => {
+        if (prev <= 1) { clearInterval(countdownRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const parseQuotaError = (errMsg) => {
+    try {
+      const jsonStart = errMsg.indexOf('{');
+      if (jsonStart === -1) return null;
+      const parsed = JSON.parse(errMsg.slice(jsonStart));
+      if (parsed?.error?.code === 429) {
+        const retryInfo = parsed.error.details?.find(d => d['@type']?.includes('RetryInfo'));
+        const delaySec = retryInfo?.retryDelay ? parseInt(retryInfo.retryDelay) : 10;
+        return { isQuota: true, delaySec };
+      }
+    } catch { /* not json */ }
+    return null;
+  };
+
   const handleEnhance = async () => {
     if (!inputText.trim()) return;
 
     if (!apiKey || apiKey === 'undefined' || apiKey.includes('your_api_key')) {
       setOutputText('API Key not found! Make sure VITE_GEMINI_API_KEY is set in your Vercel Environment Variables (or .env locally). Redeploy after adding it.');
       setHasError(true);
+      setErrorType('key');
       return;
     }
 
     setIsProcessing(true);
     setOutputText('');
     setHasError(false);
+    setErrorType(null);
 
     try {
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.0-flash-lite',
         contents: buildPromptText(selectedTone, inputText),
       });
 
       const generatedText = response.text || 'Failed to generate prompt.';
       setOutputText(generatedText);
       setHasError(false);
+      setErrorType(null);
       saveHistory(inputText, generatedText, selectedTone);
     } catch (error) {
       console.error(error);
       setHasError(true);
-      setOutputText(`Error: ${error.message}`);
+      const quotaInfo = parseQuotaError(error.message);
+      if (quotaInfo) {
+        setErrorType('quota');
+        setOutputText('');
+        startCountdown(quotaInfo.delaySec + 2);
+      } else {
+        setErrorType('general');
+        setOutputText(`Error: ${error.message}`);
+      }
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleRetry = () => {
-    if (inputText.trim()) handleEnhance();
+    if (inputText.trim() && retryCountdown === 0) handleEnhance();
   };
 
   const copyToClipboard = async () => {
@@ -314,6 +353,50 @@ Rules for the enhanced prompt:
                   <div className="skeleton-line skeleton-line-60"></div>
                   <div className="skeleton-line skeleton-line-90"></div>
                   <div className="skeleton-line skeleton-line-70"></div>
+                </div>
+              ) : hasError && errorType === 'quota' ? (
+                <div className="error-container">
+                  <div className="quota-icon"><Clock size={36} /></div>
+                  <div className="quota-title">API Quota Exhausted</div>
+                  <div className="quota-desc">
+                    Tumhare API key ka free tier quota khatam ho gaya hai.<br />
+                    Yeh issue fix karne ke liye neeche diye steps follow karo:
+                  </div>
+                  <div className="quota-steps">
+                    <div className="quota-step">
+                      <span className="quota-step-num">1</span>
+                      <span>Google AI Studio mein jao aur billing enable karo — ya ek naya API key banao</span>
+                    </div>
+                    <div className="quota-step">
+                      <span className="quota-step-num">2</span>
+                      <span>Vercel ke Environment Variables mein <code>VITE_GEMINI_API_KEY</code> update karo</span>
+                    </div>
+                    <div className="quota-step">
+                      <span className="quota-step-num">3</span>
+                      <span>Redeploy karo Vercel par</span>
+                    </div>
+                  </div>
+                  <div className="quota-actions">
+                    <a
+                      href="https://aistudio.google.com/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary"
+                    >
+                      <ExternalLink size={16} /> Get New API Key
+                    </a>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={handleRetry}
+                      disabled={retryCountdown > 0}
+                    >
+                      {retryCountdown > 0 ? (
+                        <><Clock size={16} /> Retry in {retryCountdown}s</>
+                      ) : (
+                        <><RotateCcw size={16} /> Try Again</>
+                      )}
+                    </button>
+                  </div>
                 </div>
               ) : hasError && outputText ? (
                 <div className="error-container">

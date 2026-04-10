@@ -6,6 +6,7 @@ import './index.css';
 const MAX_CHARS = 2000;
 const HISTORY_KEY = 'prompt_buddy_history';
 const MAX_HISTORY = 20;
+const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
 
 function App() {
   const [inputText, setInputText] = useState('');
@@ -87,6 +88,25 @@ Rules for the enhanced prompt:
     return null;
   };
 
+  const tryWithFallback = async (ai, promptText, modelIndex = 0) => {
+    if (modelIndex >= FALLBACK_MODELS.length) {
+      throw new Error('QUOTA_ALL_EXHAUSTED');
+    }
+    try {
+      const response = await ai.models.generateContent({
+        model: FALLBACK_MODELS[modelIndex],
+        contents: promptText,
+      });
+      return response;
+    } catch (error) {
+      const quotaInfo = parseQuotaError(error.message);
+      if (quotaInfo && modelIndex < FALLBACK_MODELS.length - 1) {
+        return tryWithFallback(ai, promptText, modelIndex + 1);
+      }
+      throw error;
+    }
+  };
+
   const handleEnhance = async () => {
     if (!inputText.trim()) return;
 
@@ -104,10 +124,7 @@ Rules for the enhanced prompt:
 
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-lite',
-        contents: buildPromptText(selectedTone, inputText),
-      });
+      const response = await tryWithFallback(ai, buildPromptText(selectedTone, inputText));
 
       const generatedText = response.text || 'Failed to generate prompt.';
       setOutputText(generatedText);
@@ -117,14 +134,20 @@ Rules for the enhanced prompt:
     } catch (error) {
       console.error(error);
       setHasError(true);
-      const quotaInfo = parseQuotaError(error.message);
-      if (quotaInfo) {
+      if (error.message === 'QUOTA_ALL_EXHAUSTED') {
         setErrorType('quota');
         setOutputText('');
-        startCountdown(quotaInfo.delaySec + 2);
+        startCountdown(12);
       } else {
-        setErrorType('general');
-        setOutputText(`Error: ${error.message}`);
+        const quotaInfo = parseQuotaError(error.message);
+        if (quotaInfo) {
+          setErrorType('quota');
+          setOutputText('');
+          startCountdown(quotaInfo.delaySec + 2);
+        } else {
+          setErrorType('general');
+          setOutputText(`Error: ${error.message}`);
+        }
       }
     } finally {
       setIsProcessing(false);

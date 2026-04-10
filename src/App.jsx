@@ -6,7 +6,7 @@ import './index.css';
 const MAX_CHARS = 2000;
 const HISTORY_KEY = 'prompt_buddy_history';
 const MAX_HISTORY = 20;
-const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
+const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
 function App() {
   const [inputText, setInputText] = useState('');
@@ -100,7 +100,8 @@ Rules for the enhanced prompt:
       return response;
     } catch (error) {
       const quotaInfo = parseQuotaError(error.message);
-      if (quotaInfo && modelIndex < FALLBACK_MODELS.length - 1) {
+      const isQuota = quotaInfo !== null;
+      if (isQuota && modelIndex < FALLBACK_MODELS.length - 1) {
         return tryWithFallback(ai, promptText, modelIndex + 1);
       }
       throw error;

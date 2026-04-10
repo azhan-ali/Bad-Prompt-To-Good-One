@@ -50,7 +50,14 @@ Rules for the enhanced prompt:
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        let errDetails = '';
+        try {
+          const errData = await response.json();
+          errDetails = errData.error?.message || JSON.stringify(errData);
+        } catch(e) {
+          errDetails = response.statusText;
+        }
+        throw new Error(`API Error ${response.status}: ${errDetails}`);
       }
 
       const data = await response.json();
@@ -58,7 +65,7 @@ Rules for the enhanced prompt:
       setOutputText(generatedText);
     } catch (error) {
       console.error(error);
-      setOutputText(`Oops! Ek error aa gaya.\n\nDetails: ${error.message}\nKya tumne apna API key sahi daala hai?`);
+      setOutputText(`Oops! Ek error aa gaya.\n\nDetails: ${error.message}\nKya tumne apna API key sahi daala hai yahi batao.`);
     } finally {
       setIsProcessing(false);
     }

@@ -14,8 +14,9 @@ function App() {
   const handleEnhance = async () => {
     if (!inputText.trim()) return;
 
-    if (!apiKey) {
-      setOutputText('API key .env mein specify nahi ki gayi hai. Kripya dhyan de.');
+    if (!apiKey || apiKey === 'undefined' || apiKey.includes('your_api_key')) {
+      setOutputText('⚠️ API Key load nahi hui bavaal! Agar tum Vercel par ho, toh dhyan rakho ki deploy se pehle "VITE_GEMINI_API_KEY" Vercel ke Environment Variables mein daalna zaroori hai. Local pe ho toh server restart maaro.');
+      setIsProcessing(false);
       return;
     }
 
@@ -23,7 +24,7 @@ function App() {
     setOutputText('');
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
